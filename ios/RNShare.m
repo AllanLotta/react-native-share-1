@@ -43,7 +43,6 @@
 #import "GenericShare.h"
 #import "WhatsAppShare.h"
 #import "InstagramShare.h"
-#import "InstagramStories.h"
 #import "GooglePlusShare.h"
 #import "EmailShare.h"
 
@@ -69,15 +68,6 @@
     }
 }
 
-- (BOOL)isImageMimeType:(NSString *)data {
-    NSRange range = [data rangeOfString:@"data:image" options:NSCaseInsensitiveSearch];
-    if (range.location != NSNotFound) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
 RCT_EXPORT_MODULE()
 
 - (NSDictionary *)constantsToExport
@@ -88,12 +78,7 @@ RCT_EXPORT_MODULE()
     @"GOOGLEPLUS": @"googleplus",
     @"WHATSAPP": @"whatsapp",
     @"INSTAGRAM": @"instagram",
-    @"INSTAGRAM_STORIES": @"instagram-stories",
     @"EMAIL": @"email",
-
-    @"SHARE_BACKGROUND_IMAGE": @"shareBackgroundImage",
-    @"SHARE_STICKER_IMAGE": @"shareStickerImage",
-    @"SHARE_BACKGROUND_AND_STICKER_IMAGE": @"shareBackgroundAndStickerImage",
   };
 }
 
@@ -104,15 +89,15 @@ RCT_EXPORT_METHOD(shareSingle:(NSDictionary *)options
 
     NSString *social = [RCTConvert NSString:options[@"social"]];
     if (social) {
-        NSLog(@"%@", social);
+        NSLog(social);
         if([social isEqualToString:@"facebook"]) {
             NSLog(@"TRY OPEN FACEBOOK");
             GenericShare *shareCtl = [[GenericShare alloc] init];
-            [shareCtl shareSingle:options failureCallback: failureCallback successCallback: successCallback serviceType: SLServiceTypeFacebook inAppBaseUrl:@"fb://"];
+            [shareCtl shareSingle:options failureCallback: failureCallback successCallback: successCallback serviceType: SLServiceTypeFacebook];
         } else if([social isEqualToString:@"twitter"]) {
             NSLog(@"TRY OPEN Twitter");
             GenericShare *shareCtl = [[GenericShare alloc] init];
-            [shareCtl shareSingle:options failureCallback: failureCallback successCallback: successCallback serviceType: SLServiceTypeTwitter inAppBaseUrl:@"twitter://"];
+            [shareCtl shareSingle:options failureCallback: failureCallback successCallback: successCallback serviceType: SLServiceTypeTwitter];
         } else if([social isEqualToString:@"googleplus"]) {
             NSLog(@"TRY OPEN google plus");
             GooglePlusShare *shareCtl = [[GooglePlusShare alloc] init];
@@ -124,14 +109,6 @@ RCT_EXPORT_METHOD(shareSingle:(NSDictionary *)options
         } else if([social isEqualToString:@"instagram"]) {
             NSLog(@"TRY OPEN instagram");
             InstagramShare *shareCtl = [[InstagramShare alloc] init];
-            if([self isImageMimeType:options[@"url"]]) {// Condition to handle image
-                [shareCtl shareSingleImage:options failureCallback: failureCallback successCallback: successCallback];
-            } else {
-                [shareCtl shareSingle:options failureCallback: failureCallback successCallback: successCallback];
-            }
-        } else if([social isEqualToString:@"instagram-stories"]) {
-            NSLog(@"TRY OPEN instagram-stories");
-            InstagramStories *shareCtl = [[InstagramStories alloc] init];
             [shareCtl shareSingle:options failureCallback: failureCallback successCallback: successCallback];
         } else if([social isEqualToString:@"email"]) {
             NSLog(@"TRY OPEN email");
@@ -200,7 +177,7 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)options
     shareController.completionWithItemsHandler = ^(NSString *activityType, BOOL completed, __unused NSArray *returnedItems, NSError *activityError) {
         if (activityError) {
             failureCallback(activityError);
-        } else if (completed || activityType == nil) {
+        } else {
             successCallback(@[@(completed), RCTNullIfNil(activityType)]);
         }
     };
