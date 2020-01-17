@@ -1,7 +1,13 @@
 package cl.json;
 
+import android.content.CursorLoader;
+import android.content.Intent;
+import android.database.Cursor;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.v4.content.FileProvider;
 import android.util.Base64;
 import android.webkit.MimeTypeMap;
 
@@ -10,6 +16,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.StringReader;
+import java.net.URI;
 
 /**
  * Created by disenodosbbcl on 22-07-16.
@@ -20,15 +28,16 @@ public class ShareFile {
     private String url;
     private Uri uri;
     private String type;
+    private String extension = "";
     private String filename;
 
-    public ShareFile(String url, String type, String filename, ReactApplicationContext reactContext){
+    public class ShareFile(String url, String type, String filename, ReactApplicationContext reactContext){
         this(url, filename, reactContext);
         this.type = type;
         this.filename = filename;
     }
 
-    public ShareFile(String url, String filename, ReactApplicationContext reactContext){
+    public class ShareFile(String url, String filename, ReactApplicationContext reactContext){
         this.url = url;
         this.uri = Uri.parse(this.url);
         this.reactContext = reactContext;
@@ -36,7 +45,7 @@ public class ShareFile {
     }
     /**
      * Obtain mime type from URL
-     * @param url {@link String}
+     * @param {@link String} url
      * @return {@link String} mime type
      */
     private String getMimeType(String url) {
@@ -54,7 +63,7 @@ public class ShareFile {
     public boolean isFile() {
         return this.isBase64File() || this.isLocalFile();
     }
-    private boolean isBase64File() {
+    public boolean isBase64File() {
         String scheme = uri.getScheme();
         if((scheme != null) && uri.getScheme().equals("data")) {
             this.type = this.uri.getSchemeSpecificPart().substring(0, this.uri.getSchemeSpecificPart().indexOf(";"));
@@ -62,7 +71,7 @@ public class ShareFile {
         }
         return false;
     }
-    private boolean isLocalFile() {
+    public boolean isLocalFile() {
         String scheme = uri.getScheme();
         if((scheme != null) && (uri.getScheme().equals("content") || uri.getScheme().equals("file"))) {
             // type is already set
@@ -97,38 +106,45 @@ public class ShareFile {
         return this.type;
     }
     private String getRealPathFromURI(Uri contentUri) {
-        String result = RNSharePathUtil.getRealPathFromURI(this.reactContext, contentUri);
+        String[] proj = { MediaStore.Images.Media.DATA };
+        CursorLoader loader = new CursorLoader(this.reactContext, contentUri, proj, null, null, null);
+        Cursor cursor = loader.loadInBackground();
+        String result = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+            result = cursor.getString(column_index);
+            cursor.close();
+        }
         return result;
     }
     public Uri getURI() {
 
         final MimeTypeMap mime = MimeTypeMap.getSingleton();
-        String extension = mime.getExtensionFromMimeType(getType());
+        this.extension = mime.getExtensionFromMimeType(getType());
+        final String authority = ((ShareApplication) reactContext.getApplicationContext()).getFileProviderAuthority();
 
         if(this.isBase64File()) {
             String encodedImg = this.uri.getSchemeSpecificPart().substring(this.uri.getSchemeSpecificPart().indexOf(";base64,") + 8);
             String filename = this.filename != null ? this.filename : System.nanoTime() + "";
             try {
                 File dir = new File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_DOWNLOADS );
-                if (!dir.exists() && !dir.mkdirs()) {
-                    throw new IOException("mkdirs failed on " + dir.getAbsolutePath());
+                if (!dir.exists()) {
+                    dir.mkdirs();
                 }
                 File file = new File(dir, filename + "." + extension);
                 final FileOutputStream fos = new FileOutputStream(file);
                 fos.write(Base64.decode(encodedImg, Base64.DEFAULT));
                 fos.flush();
                 fos.close();
-                return RNSharePathUtil.compatUriFromFile(reactContext, file);
+                return FileProvider.getUriForFile(reactContext, authority, file);
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
         } else if(this.isLocalFile()) {
             Uri uri = Uri.parse(this.url);
-            if (uri.getPath() == null) {
-                return null;
-            }
-            return RNSharePathUtil.compatUriFromFile(reactContext, new File(uri.getPath()));
+
+            return FileProvider.getUriForFile(reactContext, authority, new File(uri.getPath()));
         }
 
         return null;
