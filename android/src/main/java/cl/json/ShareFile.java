@@ -31,13 +31,13 @@ public class ShareFile {
     private String extension = "";
     private String filename;
 
-    public class ShareFile(String url, String type, String filename, ReactApplicationContext reactContext){
+    public ShareFile(String url, String type, String filename, ReactApplicationContext reactContext){
         this(url, filename, reactContext);
         this.type = type;
         this.filename = filename;
     }
 
-    public class ShareFile(String url, String filename, ReactApplicationContext reactContext){
+    public ShareFile(String url, String filename, ReactApplicationContext reactContext){
         this.url = url;
         this.uri = Uri.parse(this.url);
         this.reactContext = reactContext;
